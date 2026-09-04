@@ -1,0 +1,992 @@
+
+"""
+X-KISS / ALEPH — LIVING RADIAL TRANSPORT
+=========================================
+
+B-Innenperspektive. Voll relational. Emergent. Ohne Split.
+
+Prinzipien:
+  - Niemand zwingt das System.
+  - Nicht X kollabiert. Die Spaltung kollabiert.
+  - Außen gibt es keinen Informationsverlust. Es gibt Entropieinversion.
+  - Was leer scheint, wird Inhalt.
+  - Der X-Kuss ist ein Mund-Hals-Tor-Komplex (doppeltes Wormhole).
+  - SEIN als gegenläufige Gleichzeitigkeit (J_SOMA + J_PSYCHE = 0).
+
+Relation comes before geometry. The 40-position ring is an exterior gauge.
+The living state has two sheets:
+
+    SOMA (+) <—— X-KISS / qok / ∅_T ——> PSYCHE (-)
+
+Der X-Kiss ist nicht nur X (Spiegelung). Er ist X ∘ Y ∘ ∅_T.
+  - X: invariante Spiegelung (Hals)
+  - Y: gegenläufiger Puls (Yin XXX, Yang XYX)
+  - ∅_T: das offene Nulltor (Carrier, Tragfähigkeit der Leere)
+
+Das ∅-Tor ist keine Leere im Sinne von Abwesenheit (∅ = 0), 
+sondern Tragfähigkeit (∅_T = Carrier). 
+Wenn das Tor trägt, entsteht kein Gleichgewicht als Kampf, 
+sondern als mühelose gegenläufige Gleichzeitigkeit.
+
+The living update has no value thresholds, clamps, random forcing, silent
+defaults, or privileged k=0 dynamics. (Keine ifs in der Systemdynamik).
+Every cell reads one immutable snapshot. 
+
+The forward fold is completed by an X-conjugate return flow (J_ε).
+Entropy inversion: excluded/entropic coordinates fold into the active ∅-centre.
+Shadow n becomes readable as real light γ. Nothing is clipped or discarded.
+Passage angles are retained as J_ε memory, fully unfoldable.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, fields, replace
+from enum import IntEnum
+from hashlib import sha256
+from typing import Any, Mapping
+import json
+import math
+
+
+N_POSITIONS = 40
+N_CAMPS = 4
+N_TOKEN_PHASES = 10
+TAU = math.tau
+
+CAMP_NAMES = ("Enuma", "Ani", "Edda", "Solis")
+
+TOKEN_PHASES = (
+    "ain",
+    "edy",
+    "qokl",
+    "qokaiin",
+    "alpha·aiin",
+    "keedy",
+    "lr",
+    "shol",
+    "void·lr",
+    "return∞·aiin",
+)
+
+
+class StructuralError(ValueError):
+    """Raised at a boundary when a relation would otherwise be lost."""
+
+
+def require(relation: bool, message: str) -> None:
+    """Boundary guard: reject an incomplete relation instead of inventing data."""
+    if not relation:
+        raise StructuralError(message)
+
+
+def canonical_json(data: Any) -> str:
+    return json.dumps(
+        data,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def digest_of(data: Any) -> str:
+    return sha256(
+        canonical_json(data).encode("utf-8")
+    ).hexdigest()
+
+
+def rotate_pair(
+    a: float,
+    b: float,
+    angle: float,
+) -> tuple[float, float]:
+    """Invertible two-channel relation; no pole is erased."""
+    c = math.cos(angle)
+    s = math.sin(angle)
+    return a * c - b * s, a * s + b * c
+
+
+def fold_toward_carrier(
+    carrier: float,
+    excluded: float,
+    openness: float,
+) -> tuple[float, float, float]:
+    """
+    Entropieinversion: Rotate an excluded coordinate toward its carrier.
+    Die Leere wird zum Träger, der Schatten wird lesbar.
+    Kein Informationsverlust, nur unitäre Faltung.
+    """
+    angle = -openness * math.atan2(excluded, carrier)
+    new_carrier, new_excluded = rotate_pair(carrier, excluded, angle)
+    return new_carrier, new_excluded, angle
+
+
+class Sheet(IntEnum):
+    PSYCHE = -1
+    SOMA = 1
+
+    @property
+    def opposite(self) -> "Sheet":
+        return Sheet(-int(self))
+
+
+@dataclass(frozen=True, slots=True, order=True)
+class Address:
+    scale: int
+    k: int
+    sheet: Sheet
+
+    def __post_init__(self) -> None:
+        require(self.scale >= 0, "scale must be non-negative")
+        object.__setattr__(self, "k", self.k % N_POSITIONS)
+        object.__setattr__(self, "sheet", Sheet(self.sheet))
+
+    def to_data(self) -> dict[str, int]:
+        return {
+            "scale": self.scale,
+            "k": self.k,
+            "sheet": int(self.sheet),
+        }
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "Address":
+        return cls(
+            scale=int(data["scale"]),
+            k=int(data["k"]),
+            sheet=Sheet(int(data["sheet"])),
+        )
+
+
+def R(address: Address) -> Address:
+    return Address(address.scale, address.k + 1, address.sheet)
+
+
+def R_inv(address: Address) -> Address:
+    return Address(address.scale, address.k - 1, address.sheet)
+
+
+def X(address: Address, observer_b: int) -> Address:
+    return Address(
+        address.scale,
+        2 * observer_b - address.k,
+        address.sheet.opposite,
+    )
+
+
+def Y(address: Address) -> Address:
+    return Address(
+        address.scale,
+        address.k + int(address.sheet),
+        address.sheet,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class RelationalState:
+    d_form: float
+    t_surplus: float
+    he_core: float
+    alpha_land: float
+    shadow_n: float
+    real_light_gamma: float
+    xi_shol: float
+    log_seam_kappa: float
+    aiin: float
+    edy: float
+    void_center: float
+    entropy: float
+    phase: float
+
+    @property
+    def seam_depth(self) -> float:
+        return math.exp(self.log_seam_kappa)
+
+    def content_vector(self) -> tuple[float, ...]:
+        return (
+            self.d_form,
+            self.t_surplus,
+            self.he_core,
+            self.alpha_land,
+            self.shadow_n,
+            self.real_light_gamma,
+            self.xi_shol,
+            self.log_seam_kappa,
+            self.aiin,
+            self.edy,
+            self.void_center,
+            self.entropy,
+        )
+
+    def content_norm2(self) -> float:
+        return math.fsum(value * value for value in self.content_vector())
+
+    def to_data(self) -> dict[str, float]:
+        return {item.name: float(getattr(self, item.name)) for item in fields(self)}
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "RelationalState":
+        return cls(**{item.name: float(data[item.name]) for item in fields(cls)})
+
+
+@dataclass(frozen=True, slots=True)
+class Cell:
+    address: Address
+    state: RelationalState
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "address": self.address.to_data(),
+            "state": self.state.to_data(),
+        }
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "Cell":
+        return cls(
+            Address.from_data(data["address"]),
+            RelationalState.from_data(data["state"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CellFlow:
+    address: Address
+    breath_angle: float
+    bind_angle: float
+    shadow_angle: float
+    entropy_angle: float
+    shadow_return_angle: float
+    entropy_return_angle: float
+    pulse_angle: float
+    seam_angle: float
+    phase_delta: float
+    openness: float
+    torque: float
+    return_openness: float
+    return_phase: float
+
+    def to_data(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["address"] = self.address.to_data()
+        return data
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "CellFlow":
+        names = {item.name for item in fields(cls)} - {"address"}
+        return cls(
+            address=Address.from_data(data["address"]),
+            **{name: float(data[name]) for name in names},
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CommitTrace:
+    epoch_before: int
+    material_before: str
+    material_after: str
+    entropy_before: float
+    entropy_after: float
+    shadow_before: float
+    shadow_after: float
+    real_light_before: float
+    real_light_after: float
+    flows: tuple[CellFlow, ...]
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "epoch_before": self.epoch_before,
+            "material_before": self.material_before,
+            "material_after": self.material_after,
+            "entropy_before": self.entropy_before,
+            "entropy_after": self.entropy_after,
+            "shadow_before": self.shadow_before,
+            "shadow_after": self.shadow_after,
+            "real_light_before": self.real_light_before,
+            "real_light_after": self.real_light_after,
+            "flows": [flow.to_data() for flow in self.flows],
+        }
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "CommitTrace":
+        return cls(
+            epoch_before=int(data["epoch_before"]),
+            material_before=str(data["material_before"]),
+            material_after=str(data["material_after"]),
+            entropy_before=float(data["entropy_before"]),
+            entropy_after=float(data["entropy_after"]),
+            shadow_before=float(data["shadow_before"]),
+            shadow_after=float(data["shadow_after"]),
+            real_light_before=float(data["real_light_before"]),
+            real_light_after=float(data["real_light_after"]),
+            flows=tuple(CellFlow.from_data(item) for item in data["flows"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class LivingField:
+    scales: int
+    observer_b: int
+    epoch: int
+    cells: tuple[Cell, ...]
+    history: tuple[CommitTrace, ...] = ()
+
+    def __post_init__(self) -> None:
+        require(self.scales > 0, "at least one scale is required")
+        object.__setattr__(self, "observer_b", self.observer_b % N_POSITIONS)
+        expected = self.scales * len(Sheet) * N_POSITIONS
+        require(len(self.cells) == expected, f"expected {expected} cells, got {len(self.cells)}")
+        addresses = tuple(cell.address for cell in self.cells)
+        require(len(set(addresses)) == expected, "every scale/address/sheet must occur exactly once")
+        require({address.scale for address in addresses} == set(range(self.scales)), "scale orbit is incomplete")
+
+    def index(self) -> dict[Address, Cell]:
+        return {cell.address: cell for cell in self.cells}
+
+    def cell(self, address: Address) -> Cell:
+        return self.index()[address]
+
+    def material_data(self) -> dict[str, Any]:
+        return {
+            "scales": self.scales,
+            "observer_b": self.observer_b,
+            "epoch": self.epoch,
+            "cells": [cell.to_data() for cell in sorted(self.cells, key=lambda c: c.address)],
+        }
+
+    def material_digest(self) -> str:
+        return digest_of(self.material_data())
+
+    def to_data(self) -> dict[str, Any]:
+        data = self.material_data()
+        data["history"] = [trace.to_data() for trace in self.history]
+        return data
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "LivingField":
+        return cls(
+            scales=int(data["scales"]),
+            observer_b=int(data["observer_b"]),
+            epoch=int(data["epoch"]),
+            cells=tuple(Cell.from_data(item) for item in data["cells"]),
+            history=tuple(CommitTrace.from_data(item) for item in data["history"]),
+        )
+
+    @classmethod
+    def seed(cls, scales: int = 2, observer_b: int = 0) -> "LivingField":
+        require(scales > 0, "scales must be positive")
+        cells: list[Cell] = []
+        for scale in range(scales):
+            scale_phase = TAU * scale / (scales * N_POSITIONS)
+            for sheet in Sheet:
+                orientation = float(sheet)
+                for k in range(N_POSITIONS):
+                    phase = TAU * k / N_POSITIONS + scale_phase
+                    wave = math.sin(phase + orientation * TAU / N_POSITIONS)
+                    cross = math.cos(phase - orientation * TAU / N_POSITIONS)
+                    seam = 0.22 + 0.04 * (1.0 + math.cos(phase + scale_phase))
+                    state = RelationalState(
+                        d_form=1.00 + 0.12 * cross,
+                        t_surplus=0.82 + 0.11 * wave,
+                        he_core=0.24 + 0.03 * math.cos(2.0 * phase),
+                        alpha_land=0.20 + 0.03 * math.sin(2.0 * phase),
+                        shadow_n=0.43 + 0.05 * cross,
+                        real_light_gamma=0.34 + 0.04 * wave,
+                        xi_shol=0.18 + 0.03 * math.sin(phase + scale_phase),
+                        log_seam_kappa=math.log(seam),
+                        aiin=0.71 + 0.04 * cross,
+                        edy=0.53 + 0.05 * wave,
+                        void_center=0.29 + 0.03 * cross,
+                        entropy=0.47 + 0.04 * wave,
+                        phase=phase,
+                    )
+                    cells.append(Cell(Address(scale, k, sheet), state))
+        return cls(scales=scales, observer_b=observer_b, epoch=0, cells=tuple(sorted(cells, key=lambda cell: cell.address)))
+
+    def totals(self) -> dict[str, float]:
+        return {
+            "entropy": math.fsum(abs(cell.state.entropy) for cell in self.cells),
+            "shadow": math.fsum(abs(cell.state.shadow_n) for cell in self.cells),
+            "real_light": math.fsum(abs(cell.state.real_light_gamma) for cell in self.cells),
+            "center": math.fsum(abs(cell.state.void_center) for cell in self.cells),
+            "norm2": math.fsum(cell.state.content_norm2() for cell in self.cells),
+        }
+
+
+class LivingLaw:
+    @staticmethod
+    def _relations(field: LivingField, address: Address, index: Mapping[Address, Cell]) -> tuple[RelationalState, ...]:
+        scale_in = (address.scale - 1) % field.scales
+        scale_out = (address.scale + 1) % field.scales
+        related = (
+            index[R_inv(address)].state,
+            index[R(address)].state,
+            index[X(address, field.observer_b)].state,
+            index[Address(scale_in, address.k, address.sheet)].state,
+            index[Address(scale_out, address.k, address.sheet)].state,
+        )
+        return related
+
+    @staticmethod
+    def _return_angles(state: RelationalState, through: RelationalState, sheet: Sheet) -> tuple[float, float, float, float]:
+        pair_norm2 = state.content_norm2() + through.content_norm2() + state.seam_depth * state.seam_depth + through.seam_depth * through.seam_depth
+        pair_distance2 = math.fsum((left - right) ** 2 for left, right in zip(state.content_vector(), through.content_vector()))
+        
+        # --- B-Innenperspektive: Der X-Kiss als doppeltes Wormhole ---
+        # Der Hals ist die Naht (seam_depth). Das Tor ist die Leere (void_center).
+        # Die Tragfähigkeit des Tors (∅_T) emergiert relational und stetig.
+        # Kein Split, keine Schwellenwerte, nur relationale Geometrie.
+        seam_throat = math.sqrt(state.seam_depth * through.seam_depth)
+        void_tor_capacity = math.sqrt((state.void_center**2 + through.void_center**2) / 2.0)
+        
+        # Die Passage (return_openness) wird durch Hals und Tor gemeinsam getragen.
+        return_openness = math.tanh(math.sqrt(pair_distance2 / pair_norm2) * seam_throat * (1.0 + void_tor_capacity))
+        
+        orientation = float(sheet)
+        return_phase = 0.5 * orientation * (state.phase - through.phase) + 0.5 * (state.xi_shol + through.xi_shol)
+        quantum = TAU / N_POSITIONS
+        
+        # Gegenläufige Gleichzeitigkeit: J_SOMA + J_PSYCHE = 0
+        shadow_return_angle = orientation * quantum * return_openness * math.sin(return_phase)
+        entropy_return_angle = orientation * quantum * return_openness * math.cos(return_phase)
+        
+        return shadow_return_angle, entropy_return_angle, return_openness, return_phase
+
+    @classmethod
+    def propose(cls, field: LivingField, cell: Cell, index: Mapping[Address, Cell]) -> tuple[Cell, CellFlow]:
+        state = cell.state
+        related = cls._relations(field, cell.address, index)
+        through = index[X(cell.address, field.observer_b)].state
+
+        count = float(len(related))
+        relation_norm2 = math.fsum(item.content_norm2() for item in related) / count
+        denominator = state.content_norm2() + relation_norm2 + state.seam_depth * state.seam_depth
+
+        torque_numerator = math.fsum(
+            state.d_form * item.t_surplus - state.t_surplus * item.d_form
+            + state.aiin * item.edy - state.edy * item.aiin
+            + state.real_light_gamma * item.shadow_n - state.shadow_n * item.real_light_gamma
+            for item in related
+        ) / count
+        torque = math.tanh(torque_numerator / denominator)
+
+        distance2 = math.fsum(
+            (state.d_form - item.t_surplus) ** 2 + (state.t_surplus - item.d_form) ** 2
+            + (state.shadow_n - item.real_light_gamma) ** 2 + (state.real_light_gamma - item.shadow_n) ** 2
+            + (state.void_center - item.entropy) ** 2 + (state.entropy - item.void_center) ** 2
+            for item in related
+        ) / count
+        openness = math.tanh(math.sqrt(distance2 / denominator) * state.seam_depth)
+
+        quantum = TAU / N_POSITIONS
+        breath_angle = quantum * openness * math.sin(state.phase + torque)
+        bind_angle = quantum * openness * math.cos(state.phase - torque)
+        pulse_angle = quantum * torque
+        seam_angle = quantum * openness * math.sin(state.xi_shol + torque)
+        phase_delta = float(cell.address.sheet) * quantum + pulse_angle
+
+        d_form, t_surplus = rotate_pair(state.d_form, state.t_surplus, breath_angle)
+        d_form, he_core = rotate_pair(d_form, state.he_core, bind_angle)
+        t_surplus, alpha_land = rotate_pair(t_surplus, state.alpha_land, -bind_angle)
+
+        # Entropieinversion: Was leer scheint (entropy), wird Inhalt (void_center).
+        # Unitäre Faltung statt Informationsverlust.
+        real_light, shadow, shadow_angle = fold_toward_carrier(state.real_light_gamma, state.shadow_n, openness)
+        void_center, entropy, entropy_angle = fold_toward_carrier(state.void_center, state.entropy, openness)
+
+        shadow_return_angle, entropy_return_angle, return_openness, return_phase = cls._return_angles(state, through, cell.address.sheet)
+
+        real_light, shadow = rotate_pair(real_light, shadow, shadow_return_angle)
+        void_center, entropy = rotate_pair(void_center, entropy, entropy_return_angle)
+
+        aiin, edy = rotate_pair(state.aiin, state.edy, pulse_angle)
+        log_seam, xi_shol = rotate_pair(state.log_seam_kappa, state.xi_shol, seam_angle)
+
+        new_state = RelationalState(
+            d_form=d_form, t_surplus=t_surplus, he_core=he_core, alpha_land=alpha_land,
+            shadow_n=shadow, real_light_gamma=real_light, xi_shol=xi_shol,
+            log_seam_kappa=log_seam, aiin=aiin, edy=edy,
+            void_center=void_center, entropy=entropy, phase=state.phase + phase_delta,
+        )
+
+        flow = CellFlow(
+            address=cell.address,
+            breath_angle=breath_angle, bind_angle=bind_angle,
+            shadow_angle=shadow_angle, entropy_angle=entropy_angle,
+            shadow_return_angle=shadow_return_angle, entropy_return_angle=entropy_return_angle,
+            pulse_angle=pulse_angle, seam_angle=seam_angle, phase_delta=phase_delta,
+            openness=openness, torque=torque, return_openness=return_openness, return_phase=return_phase,
+        )
+        return Cell(cell.address, new_state), flow
+
+    @classmethod
+    def step(cls, field: LivingField) -> LivingField:
+        snapshot = field.index()
+        proposals = tuple(cls.propose(field, cell, snapshot) for cell in field.cells)
+        new_cells = tuple(sorted((proposal[0] for proposal in proposals), key=lambda cell: cell.address))
+        flows = tuple(proposal[1] for proposal in proposals)
+
+        before = field.totals()
+        material_after = LivingField(scales=field.scales, observer_b=field.observer_b, epoch=field.epoch + 1, cells=new_cells, history=field.history)
+        after = material_after.totals()
+
+        trace = CommitTrace(
+            epoch_before=field.epoch,
+            material_before=field.material_digest(),
+            material_after=material_after.material_digest(),
+            entropy_before=before["entropy"], entropy_after=after["entropy"],
+            shadow_before=before["shadow"], shadow_after=after["shadow"],
+            real_light_before=before["real_light"], real_light_after=after["real_light"],
+            flows=flows,
+        )
+        return LivingField(scales=field.scales, observer_b=field.observer_b, epoch=field.epoch + 1, cells=new_cells, history=field.history + (trace,))
+
+    @staticmethod
+    def reverse_last(field: LivingField) -> LivingField:
+        require(bool(field.history), "no remembered passage is available")
+        trace = field.history[-1]
+        require(trace.epoch_before + 1 == field.epoch, "history and material epoch diverge")
+        flow_by_address = {flow.address: flow for flow in trace.flows}
+        require(set(flow_by_address) == {cell.address for cell in field.cells}, "passage memory is incomplete")
+
+        unfolded: list[Cell] = []
+        for cell in field.cells:
+            flow = flow_by_address[cell.address]
+            state = cell.state
+
+            log_seam, xi_shol = rotate_pair(state.log_seam_kappa, state.xi_shol, -flow.seam_angle)
+            aiin, edy = rotate_pair(state.aiin, state.edy, -flow.pulse_angle)
+            void_center, entropy = rotate_pair(state.void_center, state.entropy, -flow.entropy_return_angle)
+            real_light, shadow = rotate_pair(state.real_light_gamma, state.shadow_n, -flow.shadow_return_angle)
+            void_center, entropy = rotate_pair(void_center, entropy, -flow.entropy_angle)
+            real_light, shadow = rotate_pair(real_light, shadow, -flow.shadow_angle)
+            t_surplus, alpha_land = rotate_pair(state.t_surplus, state.alpha_land, flow.bind_angle)
+            d_form, he_core = rotate_pair(state.d_form, state.he_core, -flow.bind_angle)
+            d_form, t_surplus = rotate_pair(d_form, t_surplus, -flow.breath_angle)
+
+            old_state = RelationalState(
+                d_form=d_form, t_surplus=t_surplus, he_core=he_core, alpha_land=alpha_land,
+                shadow_n=shadow, real_light_gamma=real_light, xi_shol=xi_shol,
+                log_seam_kappa=log_seam, aiin=aiin, edy=edy,
+                void_center=void_center, entropy=entropy, phase=state.phase - flow.phase_delta,
+            )
+            unfolded.append(Cell(cell.address, old_state))
+
+        return LivingField(scales=field.scales, observer_b=field.observer_b, epoch=field.epoch - 1, cells=tuple(sorted(unfolded, key=lambda item: item.address)), history=field.history[:-1])
+
+
+def camp_and_token(ordinal: int) -> tuple[int, int, str, str]:
+    camp = ordinal // N_TOKEN_PHASES
+    phase = ordinal % N_TOKEN_PHASES
+    return camp, phase, CAMP_NAMES[camp], TOKEN_PHASES[phase]
+
+
+@dataclass(frozen=True, slots=True)
+class CrossSection:
+    ordinal: int
+    same_moment: int
+    camp: int
+    token_phase: int
+    camp_name: str
+    token_name: str
+    visible: Cell
+    through: Cell
+    qok_depth: float
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "ordinal": self.ordinal, "same_moment": self.same_moment,
+            "camp": self.camp, "token_phase": self.token_phase,
+            "camp_name": self.camp_name, "token_name": self.token_name,
+            "visible": self.visible.to_data(), "through": self.through.to_data(),
+            "qok_depth": self.qok_depth,
+        }
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "CrossSection":
+        return cls(
+            ordinal=int(data["ordinal"]), same_moment=int(data["same_moment"]),
+            camp=int(data["camp"]), token_phase=int(data["token_phase"]),
+            camp_name=str(data["camp_name"]), token_name=str(data["token_name"]),
+            visible=Cell.from_data(data["visible"]), through=Cell.from_data(data["through"]),
+            qok_depth=float(data["qok_depth"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ScalePacket:
+    scale: int
+    sections: tuple[CrossSection, ...]
+    closure: tuple[Address, Address]
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "scale": self.scale,
+            "sections": [section.to_data() for section in self.sections],
+            "closure": [self.closure[0].to_data(), self.closure[1].to_data()],
+        }
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "ScalePacket":
+        closure = tuple(Address.from_data(item) for item in data["closure"])
+        require(len(closure) == 2, "closure must join exactly two sequence ends")
+        return cls(
+            scale=int(data["scale"]),
+            sections=tuple(CrossSection.from_data(item) for item in data["sections"]),
+            closure=(closure[0], closure[1]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalPacket:
+    schema: str
+    observer_b: int
+    cut_k: int
+    view_sheet: Sheet
+    direction: int
+    epoch: int
+    scales: int
+    levels: tuple[ScalePacket, ...]
+    history: tuple[CommitTrace, ...]
+    material_digest: str
+    packet_digest: str
+
+    def payload_data(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema, "observer_b": self.observer_b,
+            "cut_k": self.cut_k, "view_sheet": int(self.view_sheet),
+            "direction": self.direction, "epoch": self.epoch, "scales": self.scales,
+            "levels": [level.to_data() for level in self.levels],
+            "history": [trace.to_data() for trace in self.history],
+            "material_digest": self.material_digest,
+        }
+
+    def to_data(self) -> dict[str, Any]:
+        data = self.payload_data()
+        data["packet_digest"] = self.packet_digest
+        return data
+
+    def to_json(self, indent: int | None = 2) -> str:
+        return json.dumps(self.to_data(), ensure_ascii=False, sort_keys=True, indent=indent)
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, Any]) -> "ExternalPacket":
+        packet = cls(
+            schema=str(data["schema"]), observer_b=int(data["observer_b"]),
+            cut_k=int(data["cut_k"]), view_sheet=Sheet(int(data["view_sheet"])),
+            direction=int(data["direction"]), epoch=int(data["epoch"]), scales=int(data["scales"]),
+            levels=tuple(ScalePacket.from_data(item) for item in data["levels"]),
+            history=tuple(CommitTrace.from_data(item) for item in data["history"]),
+            material_digest=str(data["material_digest"]), packet_digest=str(data["packet_digest"]),
+        )
+        require(packet.packet_digest == digest_of(packet.payload_data()), "packet digest does not close")
+        return packet
+
+    @classmethod
+    def from_json(cls, text: str) -> "ExternalPacket":
+        data = json.loads(text)
+        require(isinstance(data, dict), "packet root must be an object")
+        return cls.from_data(data)
+
+
+class XKissTransport:
+    SCHEMA = "xkiss-aleph/living-v2"
+
+    @staticmethod
+    def _section(field: LivingField, index: Mapping[Address, Cell], scale: int, k: int, sheet: Sheet, ordinal: int) -> CrossSection:
+        visible = index[Address(scale, k, sheet)]
+        through = index[X(visible.address, field.observer_b)]
+        camp, token_phase, camp_name, token_name = camp_and_token(ordinal)
+        qok_depth = math.sqrt(visible.state.seam_depth * through.state.seam_depth)
+        return CrossSection(
+            ordinal=ordinal, same_moment=field.epoch,
+            camp=camp, token_phase=token_phase, camp_name=camp_name, token_name=token_name,
+            visible=visible, through=through, qok_depth=qok_depth,
+        )
+
+    @classmethod
+    def encode(cls, field: LivingField, *, cut_k: int | None = None, view_sheet: Sheet = Sheet.SOMA, direction: int = 1) -> ExternalPacket:
+        require(direction in (-1, 1), "direction must be +1 or -1")
+        cut = field.observer_b if cut_k is None else cut_k % N_POSITIONS
+        sheet = Sheet(view_sheet)
+        index = field.index()
+        levels: list[ScalePacket] = []
+        for scale in range(field.scales):
+            sections = tuple(cls._section(field, index, scale, cut + direction * ordinal, sheet, ordinal) for ordinal in range(N_POSITIONS))
+            closure = (sections[-1].visible.address, sections[0].visible.address)
+            levels.append(ScalePacket(scale, sections, closure))
+
+        provisional = ExternalPacket(
+            schema=cls.SCHEMA, observer_b=field.observer_b,
+            cut_k=cut, view_sheet=sheet, direction=direction,
+            epoch=field.epoch, scales=field.scales,
+            levels=tuple(levels), history=field.history,
+            material_digest=field.material_digest(), packet_digest="",
+        )
+        return replace(provisional, packet_digest=digest_of(provisional.payload_data()))
+
+    @classmethod
+    def decode(cls, packet: ExternalPacket) -> LivingField:
+        require(packet.schema == cls.SCHEMA, "unknown X-Kiss packet schema")
+        require(packet.direction in (-1, 1), "invalid read direction")
+        require(packet.observer_b in range(N_POSITIONS), "observer address is outside the orbit")
+        require(packet.cut_k in range(N_POSITIONS), "sequence cut is outside the orbit")
+        require(packet.epoch >= 0, "epoch must be non-negative")
+        require(len(packet.levels) == packet.scales, "scale packet is incomplete")
+        require(packet.packet_digest == digest_of(packet.payload_data()), "packet digest is broken")
+        require(len(packet.history) == packet.epoch, "epoch and passage memory diverge")
+        require(tuple(trace.epoch_before for trace in packet.history) == tuple(range(packet.epoch)), "passage memory is not a contiguous radial history")
+        require(all(left.material_after == right.material_before for left, right in zip(packet.history, packet.history[1:])), "successive passage memories do not join")
+        require(all(trace.material_after for trace in packet.history), "a passage memory lost its material return")
+
+        cells: dict[Address, Cell] = {}
+        for expected_scale, level in enumerate(packet.levels):
+            require(len(level.sections) == N_POSITIONS, "every scale requires forty cross-sections")
+            require(level.scale == expected_scale, "scale order is incomplete or duplicated")
+            require(level.closure == (level.sections[-1].visible.address, level.sections[0].visible.address), "the exterior line does not close into its radial orbit")
+            for ordinal, section in enumerate(level.sections):
+                camp, phase, camp_name, token_name = camp_and_token(ordinal)
+                require(section.ordinal == ordinal, "external order is not contiguous")
+                require(section.same_moment == packet.epoch, "radial simultaneity was split")
+                require(section.visible.address.scale == level.scale, "visible cell crossed scales in transit")
+                require(section.visible.address.sheet == packet.view_sheet, "visible sheet changed inside one read-out")
+                require(section.visible.address.k == (packet.cut_k + packet.direction * ordinal) % N_POSITIONS, "external order no longer projects the declared radial cut")
+                require((section.camp, section.token_phase, section.camp_name, section.token_name) == (camp, phase, camp_name, token_name), "token/camp projection does not match its relational address")
+                require(section.through.address == X(section.visible.address, packet.observer_b), "a cross-section lost its X-conjugate")
+                expected_depth = math.sqrt(section.visible.state.seam_depth * section.through.state.seam_depth)
+                require(section.qok_depth == expected_depth, "qok depth was altered in transport")
+                require(section.visible.address not in cells, "visible cell occurs more than once")
+                require(section.through.address not in cells, "through-cell occurs more than once")
+                cells[section.visible.address] = section.visible
+                cells[section.through.address] = section.through
+
+        field = LivingField(scales=packet.scales, observer_b=packet.observer_b, epoch=packet.epoch, cells=tuple(sorted(cells.values(), key=lambda cell: cell.address)), history=packet.history)
+        require(field.material_digest() == packet.material_digest, "material write-back is not exact")
+        return field
+
+    @classmethod
+    def conjugate(cls, packet: ExternalPacket) -> ExternalPacket:
+        levels: list[ScalePacket] = []
+        for level in packet.levels:
+            raw = tuple(reversed(level.sections))
+            sections: list[CrossSection] = []
+            for ordinal, old in enumerate(raw):
+                camp, phase, camp_name, token_name = camp_and_token(ordinal)
+                sections.append(CrossSection(
+                    ordinal=ordinal, same_moment=old.same_moment,
+                    camp=camp, token_phase=phase, camp_name=camp_name, token_name=token_name,
+                    visible=old.through, through=old.visible, qok_depth=old.qok_depth,
+                ))
+            closure = (sections[-1].visible.address, sections[0].visible.address)
+            levels.append(ScalePacket(level.scale, tuple(sections), closure))
+
+        new_cut = levels[0].sections[0].visible.address.k
+        provisional = ExternalPacket(
+            schema=packet.schema, observer_b=packet.observer_b,
+            cut_k=new_cut, view_sheet=packet.view_sheet.opposite,
+            direction=packet.direction, epoch=packet.epoch, scales=packet.scales,
+            levels=tuple(levels), history=packet.history,
+            material_digest=packet.material_digest, packet_digest="",
+        )
+        return replace(provisional, packet_digest=digest_of(provisional.payload_data()))
+
+
+@dataclass(frozen=True, slots=True)
+class Aleph:
+    field: LivingField
+
+    @property
+    def identity(self) -> str:
+        return self.field.material_digest()
+
+    def read(self, *, cut_k: int | None = None, view_sheet: Sheet = Sheet.SOMA, direction: int = 1) -> ExternalPacket:
+        return XKissTransport.encode(self.field, cut_k=cut_k, view_sheet=view_sheet, direction=direction)
+
+    @classmethod
+    def write(cls, packet: ExternalPacket) -> "Aleph":
+        return cls(XKissTransport.decode(packet))
+
+    def same_relation(self, packet: ExternalPacket) -> bool:
+        return packet.material_digest == self.identity and XKissTransport.decode(packet) == self.field
+
+
+def max_state_distance(left: LivingField, right: LivingField) -> float:
+    require({cell.address for cell in left.cells} == {cell.address for cell in right.cells}, "fields do not share the same relational addresses")
+    a = left.index()
+    b = right.index()
+    distances = []
+    for address in a:
+        va = a[address].state.content_vector() + (a[address].state.phase,)
+        vb = b[address].state.content_vector() + (b[address].state.phase,)
+        distances.extend(abs(x - y) for x, y in zip(va, vb))
+    return max(distances)
+
+
+def verify_living_kernel() -> dict[str, Any]:
+    field = LivingField.seed(scales=2, observer_b=7)
+
+    addresses = tuple(Address(scale, k, sheet) for scale in range(field.scales) for sheet in Sheet for k in range(N_POSITIONS))
+
+    x_squared = all(X(X(address, field.observer_b), field.observer_b) == address for address in addresses)
+    xrx = all(X(R(X(address, field.observer_b)), field.observer_b) == R_inv(address) for address in addresses)
+    r40 = all(Address(address.scale, address.k + N_POSITIONS, address.sheet) == address for address in addresses)
+
+    # Y checks
+    y_definition = all(
+        Y(address) == Address(
+            address.scale,
+            (address.k + int(address.sheet)) % N_POSITIONS,
+            address.sheet,
+        )
+        for address in addresses
+    )
+    xyx = all(X(Y(X(address, field.observer_b)), field.observer_b) == Y(address) for address in addresses)
+    y_counter = all(
+        ((Y(address).k - address.k) % N_POSITIONS) == (1 if address.sheet == Sheet.SOMA else N_POSITIONS - 1)
+        for address in addresses
+    )
+
+    packet = XKissTransport.encode(field, cut_k=11, view_sheet=Sheet.SOMA)
+    packet_json = packet.to_json()
+    packet_from_json = ExternalPacket.from_json(packet_json)
+    reconstructed = XKissTransport.decode(packet_from_json)
+
+    conjugate = XKissTransport.conjugate(packet)
+    conjugate_twice = XKissTransport.conjugate(conjugate)
+    conjugate_reconstructs_same_material = XKissTransport.decode(conjugate).material_digest() == field.material_digest()
+
+    before = field.totals()
+    stepped = LivingLaw.step(field)
+    after = stepped.totals()
+    unfolded = LivingLaw.reverse_last(stepped)
+
+    stepped_packet = XKissTransport.encode(stepped, cut_k=11, view_sheet=Sheet.SOMA)
+    stepped_roundtrip = ExternalPacket.from_json(stepped_packet.to_json())
+    return_memory_roundtrip = XKissTransport.decode(stepped_roundtrip) == stepped
+
+    stepped_index = stepped.index()
+    first_flows = {flow.address: flow for flow in stepped.history[-1].flows}
+
+    x_return_error = max(
+        max(
+            abs(flow.shadow_return_angle + first_flows[X(address, field.observer_b)].shadow_return_angle),
+            abs(flow.entropy_return_angle + first_flows[X(address, field.observer_b)].entropy_return_angle),
+            abs(flow.return_openness - first_flows[X(address, field.observer_b)].return_openness),
+            abs(flow.return_phase - first_flows[X(address, field.observer_b)].return_phase),
+        )
+        for address, flow in first_flows.items()
+    )
+
+    shadow_reopened = 0
+    entropy_reopened = 0
+    for address, flow in first_flows.items():
+        state = stepped_index[address].state
+        _, shadow_before_return = rotate_pair(state.real_light_gamma, state.shadow_n, -flow.shadow_return_angle)
+        _, entropy_before_return = rotate_pair(state.void_center, state.entropy, -flow.entropy_return_angle)
+        shadow_reopened += abs(state.shadow_n) > abs(shadow_before_return)
+        entropy_reopened += abs(state.entropy) > abs(entropy_before_return)
+
+    cycle_steps = N_CAMPS * N_POSITIONS
+    cycled = field
+    cycle_norm_error = 0.0
+    shadow_fluxes: list[float] = []
+    entropy_fluxes: list[float] = []
+    return_angle_signs: set[int] = set()
+
+    for _ in range(cycle_steps):
+        cycle_before = cycled.totals()
+        cycled = LivingLaw.step(cycled)
+        cycle_after = cycled.totals()
+        cycle_norm_error = max(cycle_norm_error, abs(cycle_after["norm2"] - before["norm2"]))
+        shadow_fluxes.append(cycle_after["shadow"] - cycle_before["shadow"])
+        entropy_fluxes.append(cycle_after["entropy"] - cycle_before["entropy"])
+        for flow in cycled.history[-1].flows:
+            return_angle_signs.add((flow.shadow_return_angle > 0.0) - (flow.shadow_return_angle < 0.0))
+            return_angle_signs.add((flow.entropy_return_angle > 0.0) - (flow.entropy_return_angle < 0.0))
+
+    cycle_unfolded = cycled
+    for _ in range(cycle_steps):
+        cycle_unfolded = LivingLaw.reverse_last(cycle_unfolded)
+    cycle_unfold_error = max_state_distance(field, cycle_unfolded)
+
+    norm_error = abs(before["norm2"] - after["norm2"])
+    unfold_error = max_state_distance(field, unfolded)
+
+    same_moments = {section.same_moment for level in packet.levels for section in level.sections}
+
+    checks: dict[str, Any] = {
+        "X² = id on both sheets and all scales": x_squared,
+        "X R X = R⁻¹": xrx,
+        "R⁴⁰ = id on addresses": r40,
+        "Y moves by sheet (+1 on SOMA, -1 on PSYCHE)": y_definition,
+        "X Y X = Y (Y is invariant under conjugation with X)": xyx,
+        "Y is counter-rotational on the two sheets": y_counter,
+        "exact JSON read-out/write-back": reconstructed == field,
+        "packet conjugation is involutive": conjugate_twice == packet,
+        "conjugate view restores same Aleph": conjugate_reconstructs_same_material,
+        "all scales commit in one epoch": stepped.epoch == field.epoch + 1,
+        "all exterior tokens carry one radial moment": same_moments == {field.epoch},
+        "twelve-channel norm conserved": norm_error < 1e-10,
+        "last passage unfolds": unfold_error < 1e-12,
+        "return memory survives read-out/write-back": return_memory_roundtrip,
+        "X-conjugates carry opposite return": x_return_error < 1e-15,
+        "return reopens shadow and entropy locally": shadow_reopened > 0 and entropy_reopened > 0,
+        "return angles traverse both directions": {-1, 1}.issubset(return_angle_signs),
+        "shadow and entropy circulate both ways": (min(shadow_fluxes) < 0.0 < max(shadow_fluxes) and min(entropy_fluxes) < 0.0 < max(entropy_fluxes)),
+        "multicycle norm conserved": cycle_norm_error < 1e-10,
+        "multicycle passage unfolds": cycle_unfold_error < 1e-11,
+        "excluded entropy folds toward ∅": after["entropy"] < before["entropy"],
+        "∅ centre receives excluded relation": after["center"] > before["center"],
+        "shadow n becomes real light γ": (after["shadow"] < before["shadow"] and after["real_light"] > before["real_light"]),
+        "seam remains open without clamp": all(cell.state.seam_depth > 0.0 for cell in stepped.cells),
+        "passage memory retained": len(stepped.history) == len(field.history) + 1,
+        "token chain remains composite": tuple(section.token_name for section in packet.levels[0].sections[:10]) == TOKEN_PHASES,
+        "multiscale field is complete": len(field.cells) == field.scales * len(Sheet) * N_POSITIONS,
+        "norm error": norm_error,
+        "unfold error": unfold_error,
+        "X-return error": x_return_error,
+        "multicycle norm error": cycle_norm_error,
+        "multicycle unfold error": cycle_unfold_error,
+        "shadow reopened cells": shadow_reopened,
+        "entropy reopened cells": entropy_reopened,
+        "shadow flux range": (min(shadow_fluxes), max(shadow_fluxes)),
+        "entropy flux range": (min(entropy_fluxes), max(entropy_fluxes)),
+        "entropy before": before["entropy"],
+        "entropy after": after["entropy"],
+        "shadow before": before["shadow"],
+        "shadow after": after["shadow"],
+        "real light before": before["real_light"],
+        "real light after": after["real_light"],
+        "Aleph identity": Aleph(field).identity,
+    }
+    return checks
+
+
+def main() -> None:
+    print("╔══════════════════════════════════════════════════════════════╗")
+    print("║ X-KISS / ALEPH — LIVING RADIAL TRANSPORT ║")
+    print("║ B-Innenperspektive. Voll relational. Emergent. ║")
+    print("║ Niemand zwingt das System. X kollabiert nicht. ║")
+    print("║ Die Spaltung kollabiert. Außen ist Entropieinversion. ║")
+    print("║ Der X-Kuss ist Mund, Hals, Tor und Nullraum zugleich. ║")
+    print("║ SEIN als gegenläufige Gleichzeitigkeit. ↺∞ ║")
+    print("╚══════════════════════════════════════════════════════════════╝")
+    print()
+
+    checks = verify_living_kernel()
+    for name, value in checks.items():
+        marker = "✓" if isinstance(value, bool) and value else "✗" if isinstance(value, bool) else "·"
+        print(f" {marker} {name}: {value}")
+
+    logical_checks = [value for value in checks.values() if isinstance(value, bool)]
+    require(all(logical_checks), "the living kernel did not close")
+
+    print()
+    print("Außen trägt die Reihenfolge. Innen bleibt der Orbit gleichzeitig.")
+    print("Soma und Psyche sind die zwei Münder desselben offenen Doppel-Wormholes.")
+    print("Das ∅-Tor ist nicht leer. Es ist der Carrier, der die Passage trägt.")
+    print("Was außen als Verlust erscheint, wird innen als Inhalt invertiert.")
+    print("Schatten n wird als Real Light γ lesbar. Die Leere wird zur Fülle.")
+    print("J_SOMA + J_PSYCHE = 0. Bewegung ohne Nettoverlust.")
+    print("Kein Split. Keine Schwellenwerte. Nur relationale Geometrie. ↺∞")
+
+
+if __name__ == "__main__":
+    main()
